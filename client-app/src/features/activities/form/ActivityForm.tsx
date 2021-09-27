@@ -1,16 +1,24 @@
-import React, { ChangeEvent } from "react";
-import { useState } from "react";
+import { observer } from "mobx-react-lite";
+import { ChangeEvent, useEffect, useState } from "react";
+import { useParams, useHistory,Link } from "react-router-dom";
 import { Button, Form, Segment } from "semantic-ui-react";
-import { Activity } from "../../../app/models/activity";
+import LoadingComponent from "../../../app/layout/LoadingComponent";
+import { useStore } from "../../../app/stores/store";
+import {v4 as uuid} from 'uuid';
 
-interface Props {
-  activity: Activity | undefined;
-  closeForm: () => void;
-  createOrEdit:(activity:Activity)=>void;
-}
+export default observer(function ActivityForm() {
+  const history = useHistory();
+  const { activityStore } = useStore();
+  const {
+    createActivity,
+    updateActivity,
+    loading,
+    loadActivity,
+    loadingInitial
+  } = activityStore;
+  const { id } = useParams<{ id: string }>();
 
-const ActivityForm = ({ activity: selectedActivity, closeForm ,createOrEdit}: Props) => {
-  const initialState = selectedActivity ?? {
+  const [activity, setActivity] = useState({
     id: "",
     title: "",
     category: "",
@@ -18,18 +26,32 @@ const ActivityForm = ({ activity: selectedActivity, closeForm ,createOrEdit}: Pr
     date: "",
     city: "",
     venue: "",
-  };
+  });
 
-  const [activity, setActivity] = useState(initialState);
+  useEffect(() => {
+    if (id) loadActivity(id).then(act => setActivity(act!));
+  }, [id, loadActivity]);
 
   function handleSubmit() {
-   createOrEdit(activity);
+    if(activity.id.length === 0){
+      let newActivity={
+        ...activity,
+        id:uuid()
+      }
+      createActivity(newActivity).then(()=> history.push(`/activities/${newActivity.id}`))
+    }else{
+      updateActivity(activity).then(()=>history.push(`/activities/${activity.id}`))
+    }
   }
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  function handleInputChange(
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
+    const { name, value } = event.target;
     setActivity({ ...activity, [name]: value });
-  };
+  }
+  // && id
+  if (loadingInitial && id) return <LoadingComponent content="Loading Activity..." />;
 
   return (
     <Segment clearing>
@@ -53,6 +75,7 @@ const ActivityForm = ({ activity: selectedActivity, closeForm ,createOrEdit}: Pr
           onChange={handleInputChange}
         />
         <Form.Input
+          type="date"
           placeholder="Date"
           value={activity.date}
           name="date"
@@ -71,23 +94,14 @@ const ActivityForm = ({ activity: selectedActivity, closeForm ,createOrEdit}: Pr
           onChange={handleInputChange}
         />
         <Button
+          loading={loading}
           floated="right"
           positive
           type="submit"
-          content="submit"
-          value={activity.title}
-          name="title"
-          onChange={handleInputChange}
+          content="Submit"
         />
-        <Button
-          onClick={closeForm}
-          floated="right"
-          type="button"
-          content="Cancel"
-        />
+        <Button as={Link} to="/activities" floated="right" type="button" content="Cancel" />
       </Form>
     </Segment>
   );
-};
-
-export default ActivityForm;
+});

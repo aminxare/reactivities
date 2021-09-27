@@ -1,72 +1,37 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { Container } from "semantic-ui-react";
-import { Activity } from "../models/activity";
-import Navbar from "./Navbar";
+import NavBar from "./NavBar";
+import { observer } from "mobx-react-lite";
+import { Route, useLocation } from "react-router-dom";
+import HomePage from "../../features/home/HomePage";
 import ActivityDashboard from "../../features/activities/dashboard/ActivityDashboard";
-import {v4 as uuid} from 'uuid';
+import ActivityForm from "../../features/activities/form/ActivityForm";
+import ActivityDetails from "../../features/activities/details/ActivityDetails";
 
 function App() {
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [selectedActivity, setSelectedActivity] = useState<
-    Activity | undefined
-  >(undefined);
-  const [editMode, setEditMode] = useState(false);
-
-  useEffect(() => {
-    axios
-      .get<Activity[]>("http://localhost:5000/api/activities")
-      .then((res) => {
-        setActivities(res.data);
-      });
-  }, []);
-
-  function handleSelectActivity(id: string) {
-    setSelectedActivity(activities.find((x) => x.id === id));
-  }
-
-  function handleCancelActivity() {
-    setSelectedActivity(undefined);
-  }
-
-  function handleFormOpen(id?: string) {
-    id ? handleSelectActivity(id) : handleCancelActivity();
-    setEditMode(true);
-  }
-
-  function handleFormClose(){
-    setEditMode(false);
-  }
-
-  function handleCreateOrEditActivity(activity: Activity){
-    activity.id ? setActivities([...activities.filter(x=>x.id!==activity.id),activity]):
-    setActivities([...activities,{...activity,id:uuid()}]);
-    setEditMode(false);
-    setSelectedActivity(activity)
-  }
-
-  function handleDeleteActivity(id: string){
-    setActivities([...activities.filter(x=>x.id!==id)]);
-  }
+  const location = useLocation();
 
   return (
     <>
-      <Navbar openForm={handleFormOpen} />
-      <Container style={{ marginTop: "7rem" }}>
-        <ActivityDashboard
-          activities={activities}
-          selectedActivity={selectedActivity}
-          selectActivity={handleSelectActivity}
-          cancelSelectActivity={handleCancelActivity}
-          editMode={editMode}
-          openForm={handleFormOpen}
-          closeForm={handleFormClose}
-          createOrEdit={handleCreateOrEditActivity}
-          deleteActivity={handleDeleteActivity}
-        />
-      </Container>
+      <Route exact path="/" component={HomePage} />
+      <Route
+        path={"/(.+)"}
+        render={() => (
+          <>
+            <NavBar />
+            <Container style={{ marginTop: "7em" }}>
+              <Route exact path="/activities" component={ActivityDashboard} />
+              <Route path="/activities/:id" component={ActivityDetails} />
+              <Route
+                key={location.key}
+                path={["/createActivity", "/manage/:id"]}
+                component={ActivityForm}
+              />
+            </Container>
+          </>
+        )}
+      />
     </>
   );
 }
 
-export default App;
+export default observer(App);
